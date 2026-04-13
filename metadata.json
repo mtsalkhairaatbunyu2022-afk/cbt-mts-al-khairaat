@@ -1,0 +1,5 @@
+{
+  "name": "Exambro CBT - MTs Al-Khairaat Bunyu",
+  "description": "Aplikasi khusus ujian siswa (Exambro) untuk mengakses Google Form dengan fitur pengawasan dan peringatan keamanan.",
+  "requestFramePermissions": ["camera"]
+}

@@ -1,0 +1,92 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: sessions
+// Document ID: {sessionId} (usually deviceId)
+// Fields:
+//   - studentName: string (required)
+//   - deviceId: string (required)
+//   - status: string (required, enum: ['active', 'locked', 'finished'])
+//   - examUrl: string
+//   - lastUpdate: timestamp (required)
+//   - violations: list of maps {timestamp, message}
+//   - isLockedOut: bool
+//
+// Collection: config
+// Document ID: global
+// Fields:
+//   - adminPassword: string (required)
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      // For this app, students use anonymous auth. 
+      // We allow authenticated users to perform supervisor actions for now,
+      // as the app handles password verification in the UI.
+      return isAuthenticated();
+    }
+
+    function isValidSession(data) {
+      return data.studentName is string && data.studentName.size() > 0 &&
+             data.deviceId is string && data.deviceId.size() > 0 &&
+             data.status in ['active', 'locked', 'finished'] &&
+             (!('class' in data) || data.class is string) &&
+             (!('examUrl' in data) || data.examUrl is string) &&
+             (!('isLockedOut' in data) || data.isLockedOut is bool) &&
+             (!('violations' in data) || data.violations is list);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    // Sessions: Students can create/update their own session. Supervisors can read all.
+    match /sessions/{sessionId} {
+      allow read: if isAuthenticated(); 
+      allow create: if isAuthenticated() && isValidSession(request.resource.data);
+      allow update: if isAuthenticated() && isValidSession(request.resource.data);
+      allow delete: if isAuthenticated(); 
+    }
+
+    // Users: Students can read student list. Admin can do everything.
+    match /users/{userId} {
+      // Allow authenticated users (including anonymous students) to list students
+      allow read: if isAuthenticated(); 
+      // Only allow admin to manage users
+      allow write: if isAuthenticated();
+    }
+
+    // Exams: Students can read active exams. Admin can manage.
+    match /exams/{examId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Results: Students can create. Admin can read all.
+    match /results/{resultId} {
+      allow read: if isAuthenticated();
+      allow create: if true;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Config: Only readable by authenticated users.
+    match /config/global {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+  }
+}

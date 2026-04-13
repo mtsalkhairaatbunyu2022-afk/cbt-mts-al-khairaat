@@ -1,0 +1,47 @@
+{
+  "entities": {
+    "student_session": {
+      "title": "Student Session",
+      "description": "Tracks the real-time status and violations of a student during an exam.",
+      "type": "object",
+      "properties": {
+        "studentName": { "type": "string", "description": "Name of the student" },
+        "deviceId": { "type": "string", "description": "Unique device identifier" },
+        "status": { "type": "string", "enum": ["active", "locked", "finished"], "description": "Current exam status" },
+        "examUrl": { "type": "string", "description": "URL of the exam being taken" },
+        "lastUpdate": { "type": "string", "format": "date-time", "description": "Last heartbeat from the device" },
+        "violations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "timestamp": { "type": "string", "format": "date-time" },
+              "message": { "type": "string" }
+            }
+          }
+        },
+        "isLockedOut": { "type": "boolean", "description": "Whether the student is currently locked out" }
+      },
+      "required": ["studentName", "deviceId", "status", "lastUpdate"]
+    },
+    "app_config": {
+      "title": "App Config",
+      "description": "Global configuration for the exambro app.",
+      "type": "object",
+      "properties": {
+        "adminPassword": { "type": "string", "description": "Password to access the supervisor dashboard" }
+      },
+      "required": ["adminPassword"]
+    }
+  },
+  "firestore": {
+    "/sessions/{sessionId}": {
+      "schema": "student_session",
+      "description": "Real-time student exam sessions"
+    },
+    "/config/global": {
+      "schema": "app_config",
+      "description": "Global application settings"
+    }
+  }
+}
