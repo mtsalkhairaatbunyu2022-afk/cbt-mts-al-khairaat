@@ -358,6 +358,7 @@ export default function Exambro() {
   const MAX_WARNINGS = 3;
 
   const [isSecure, setIsSecure] = useState(true);
+  const [isExited, setIsExited] = useState(false);
   const [isVisualViewportSafe, setIsVisualViewportSafe] = useState(true);
 
   const triggerWarning = (message: string) => {
@@ -2015,18 +2016,12 @@ export default function Exambro() {
 
               // Clear state
               localStorage.clear();
+              setIsExited(true);
               
-              // For PWA Standalone, window.close() might work in some browsers
-              // For mobile browsers, we redirect to a clean state or about:blank
-              if (window.matchMedia('(display-mode: standalone)').matches) {
-                // Try to close, though restricted
+              // Try to close, though restricted
+              setTimeout(() => {
                 window.close();
-                // Fallback: reload to clear everything
-                window.location.href = "/";
-              } else {
-                // In browser, just reload to the start page
-                window.location.href = "/";
-              }
+              }, 1000);
             }}
             className="w-full py-3 md:py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl md:rounded-2xl font-black text-sm md:text-base transition-all shadow-lg shadow-red-200 flex items-center justify-center space-x-2 active:scale-95"
           >
@@ -2066,6 +2061,47 @@ export default function Exambro() {
               <XCircle className="w-4 h-4" />
             </button>
           </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+
+    {/* Final Exit Screen Overlay */}
+    <AnimatePresence>
+      {isExited && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 z-[200] bg-slate-900 flex flex-col items-center justify-center p-6 text-center"
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white rounded-[2.5rem] p-10 max-w-sm w-full shadow-2xl"
+          >
+            <div className="w-20 h-20 bg-emerald-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
+              <Check className="w-10 h-10 text-emerald-600" />
+            </div>
+            <h2 className="text-2xl font-black text-slate-900 mb-2 uppercase tracking-tight">Sesi Berakhir</h2>
+            <p className="text-slate-500 font-bold text-sm mb-8">
+              Data ujian Anda telah tersimpan dengan aman. Silakan tutup aplikasi ini dari menu HP Anda.
+            </p>
+            <div className="space-y-4">
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Status Terakhir</p>
+                <p className="text-emerald-600 font-black">OFFLINE / SELESAI</p>
+              </div>
+              <p className="text-[10px] text-slate-400 font-bold italic">
+                Aplikasi ini sekarang aman untuk ditutup.
+              </p>
+            </div>
+          </motion.div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-8 text-white/40 text-[10px] font-bold uppercase tracking-[0.2em] hover:text-white transition-colors"
+          >
+            Masuk Kembali?
+          </button>
         </motion.div>
       )}
     </AnimatePresence>
