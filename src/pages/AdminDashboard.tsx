@@ -83,21 +83,20 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!authLoading) {
-      // If we have a profile but no Firebase Auth yet, wait for it
-      // This is crucial because Firestore rules require request.auth
       if (user && !auth.currentUser) {
-        const timer = setTimeout(() => {
-          if (auth.currentUser) {
-            fetchData();
-          } else {
-            // If still no auth after 2 seconds, try to fetch anyway 
-            // but it might fail if rules are strict
+        // Wait for Firebase Auth to catch up with the profile
+        const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
+          if (firebaseUser) {
             fetchData();
           }
-        }, 2000);
-        return () => clearTimeout(timer);
+        });
+        return () => unsubscribe();
       }
-      fetchData();
+      if (user && auth.currentUser) {
+        fetchData();
+      } else if (!user) {
+        setLoading(false);
+      }
     }
   }, [user, authLoading]);
 

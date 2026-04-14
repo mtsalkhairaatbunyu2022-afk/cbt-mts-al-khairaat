@@ -810,6 +810,8 @@ export default function Exambro() {
   };
 
   useEffect(() => {
+    if (!isAuthReady || !auth.currentUser) return;
+
     const fetchConfig = async () => {
       try {
         const configRef = doc(db, 'config', 'global');
@@ -822,10 +824,10 @@ export default function Exambro() {
       }
     };
     fetchConfig();
-  }, []);
+  }, [isAuthReady]);
 
   useEffect(() => {
-    if (selectedClass && isAuthReady) {
+    if (selectedClass && isAuthReady && auth.currentUser) {
       const fetchStudents = async () => {
         setIsLoadingStudents(true);
         try {
@@ -843,7 +845,7 @@ export default function Exambro() {
     } else {
       setStudentList([]);
     }
-  }, [selectedClass]);
+  }, [selectedClass, isAuthReady]);
 
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);

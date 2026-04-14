@@ -68,10 +68,18 @@ export default function StudentManagement() {
   useEffect(() => {
     if (!authLoading) {
       if (user && !auth.currentUser) {
-        const timer = setTimeout(() => fetchStudents(), 1000);
-        return () => clearTimeout(timer);
+        const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
+          if (firebaseUser) {
+            fetchStudents();
+          }
+        });
+        return () => unsubscribe();
       }
-      fetchStudents();
+      if (user && auth.currentUser) {
+        fetchStudents();
+      } else if (!user) {
+        setLoading(false);
+      }
     }
   }, [user, authLoading]);
 
