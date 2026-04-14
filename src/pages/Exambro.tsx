@@ -74,8 +74,11 @@ export default function Exambro() {
   const [violationLog, setViolationLog] = useState<string[]>([]);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
+  const [showUpdateAvailable, setShowUpdateAvailable] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+
+  const APP_VERSION = "1.0.2"; // Increment this when you update
 
   const showError = (msg: string) => {
     setErrorMessage(msg);
@@ -96,8 +99,23 @@ export default function Exambro() {
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
+    // Check for updates
+    const checkUpdate = async () => {
+      try {
+        const response = await fetch('/index.html', { cache: 'no-store' });
+        const text = await response.text();
+        // This is a simple way to check if the content has changed
+        // In a real PWA, the Service Worker handles this, but a manual button is clearer for users
+      } catch (e) {
+        console.error("Update check failed", e);
+      }
+    };
+
+    const updateInterval = setInterval(checkUpdate, 60000); // Check every minute
+
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      clearInterval(updateInterval);
     };
   }, []);
 
@@ -649,7 +667,7 @@ export default function Exambro() {
     };
 
     syncSession();
-    const interval = setInterval(syncSession, 10000); // Heartbeat every 10s
+    const interval = setInterval(syncSession, 5000); // Heartbeat every 5s
 
     const handleUnload = () => {
       // Use a simpler update for unload to be as fast as possible
@@ -1052,7 +1070,7 @@ export default function Exambro() {
                         {sessions.filter(s => {
                           const isStale = s.status !== 'inactive' && 
                                          s.lastUpdate?.toDate && 
-                                         (Date.now() - s.lastUpdate.toDate().getTime() > 25000);
+                                         (Date.now() - s.lastUpdate.toDate().getTime() > 15000);
                           return s.status === 'active' && !isStale;
                         }).length} Siswa Online
                       </span>
@@ -1166,7 +1184,7 @@ export default function Exambro() {
                               {(() => {
                                 const isStale = session.status !== 'inactive' && 
                                                session.lastUpdate?.toDate && 
-                                               (Date.now() - session.lastUpdate.toDate().getTime() > 25000);
+                                               (Date.now() - session.lastUpdate.toDate().getTime() > 15000);
                                 const displayStatus = isStale ? 'offline' : session.status;
                                 
                                 return (
@@ -1600,6 +1618,8 @@ export default function Exambro() {
     );
   }
 
+  const [isExiting, setIsExiting] = useState(false);
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 md:p-6">
       {/* Share Modal */}
@@ -1727,6 +1747,17 @@ export default function Exambro() {
             <ShieldAlert className="w-10 h-10 md:w-12 md:h-12 text-white" />
           </div>
           <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Exambro CBT</h1>
+          <div className="flex items-center justify-center space-x-2 mt-1">
+            <span className="px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded text-[9px] font-bold">v{APP_VERSION}</span>
+            <button 
+              onClick={() => window.location.reload()}
+              className="flex items-center space-x-1 px-1.5 py-0.5 bg-blue-50 text-blue-500 rounded text-[9px] font-bold hover:bg-blue-100 transition-colors"
+              title="Perbarui Aplikasi"
+            >
+              <RefreshCw className="w-2.5 h-2.5" />
+              <span>PERBARUI</span>
+            </button>
+          </div>
           <p className="text-slate-500 mt-1 md:mt-2 font-medium text-sm md:text-base">MTs Al-Khairaat Bunyu</p>
           
           <div className="mt-6 md:mt-8 grid grid-cols-2 gap-2 md:gap-3">
@@ -1999,6 +2030,8 @@ export default function Exambro() {
         <div className="bg-slate-50 p-4 md:p-6 text-center border-t border-slate-100 flex flex-col space-y-3 md:space-y-4">
           <button 
             onClick={async () => {
+              if (isExiting) return;
+              setIsExiting(true);
               playBeep();
               
               // Update status to offline in Firestore before clearing local state
@@ -2017,16 +2050,30 @@ export default function Exambro() {
               // Clear state
               localStorage.clear();
               setIsExited(true);
+              setIsExiting(false);
               
               // Try to close, though restricted
               setTimeout(() => {
                 window.close();
               }, 1000);
             }}
-            className="w-full py-3 md:py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl md:rounded-2xl font-black text-sm md:text-base transition-all shadow-lg shadow-red-200 flex items-center justify-center space-x-2 active:scale-95"
+            disabled={isExiting}
+            className={cn(
+              "w-full py-3 md:py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl md:rounded-2xl font-black text-sm md:text-base transition-all shadow-lg shadow-red-200 flex items-center justify-center space-x-2 active:scale-95",
+              isExiting && "opacity-70 cursor-not-allowed"
+            )}
           >
-            <LogOut className="w-4 h-4 md:w-5 md:h-5" />
-            <span>KELUAR APLIKASI</span>
+            {isExiting ? (
+              <>
+                <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" />
+                <span>MEMPROSES KELUAR...</span>
+              </>
+            ) : (
+              <>
+                <LogOut className="w-4 h-4 md:w-5 md:h-5" />
+                <span>KELUAR APLIKASI</span>
+              </>
+            )}
           </button>
 
           <div className="flex items-center justify-center space-x-2 text-slate-400">
