@@ -944,6 +944,8 @@ export default function Exambro() {
     }
   };
 
+  const [isExiting, setIsExiting] = useState(false);
+
   if (view === 'supervisor') {
     return (
       <div className="min-h-screen bg-slate-900 text-white p-6">
@@ -1619,8 +1621,6 @@ export default function Exambro() {
       </div>
     );
   }
-
-  const [isExiting, setIsExiting] = useState(false);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 md:p-6">
