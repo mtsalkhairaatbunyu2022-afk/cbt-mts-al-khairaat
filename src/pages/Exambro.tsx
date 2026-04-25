@@ -692,10 +692,21 @@ export default function Exambro() {
   useEffect(() => {
     if (!isSupervisorAuthenticated) return;
 
-    const q = query(collection(db, 'sessions'), orderBy('lastUpdate', 'desc'));
+    const q = query(collection(db, 'sessions'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setSessions(docs);
+      // Urutkan berdasarkan nama agar tidak bergerak-gerak
+      const sortedDocs = docs.sort((a: any, b: any) => {
+        const nameA = a.studentName || '';
+        const nameB = b.studentName || '';
+        const nameCompare = nameA.localeCompare(nameB);
+        if (nameCompare !== 0) return nameCompare;
+        
+        const deviceA = a.deviceId || '';
+        const deviceB = b.deviceId || '';
+        return deviceA.localeCompare(deviceB);
+      });
+      setSessions(sortedDocs);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'sessions');
     });
