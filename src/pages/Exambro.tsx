@@ -4,7 +4,7 @@ import { Camera, Link as LinkIcon, AlertTriangle, XCircle, Maximize, ShieldAlert
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { db, auth } from '../lib/firebase';
-import { doc, setDoc, updateDoc, onSnapshot, collection, query, orderBy, serverTimestamp, Timestamp, getDoc, where, getDocs, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, onSnapshot, collection, query, orderBy, serverTimestamp, Timestamp, getDoc, where, getDocs, deleteDoc, addDoc } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import StudentManagement from './StudentManagement';
@@ -43,6 +43,7 @@ export default function Exambro() {
   const [supervisorLoginError, setSupervisorLoginError] = useState<string | null>(null);
   const [isSupervisorAuthenticated, setIsSupervisorAuthenticated] = useState(false);
   const [sessions, setSessions] = useState<any[]>([]);
+  const [logoUrl, setLogoUrl] = useState<string>('');
   const [, setTick] = useState(0);
 
   // Force re-render periodically to update "stale" status in monitoring
@@ -723,6 +724,51 @@ export default function Exambro() {
     }
   }, [isExamActive, examUrl]);
 
+  const updateAppIcons = (url: string) => {
+    // Update or create favicon
+    let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.getElementsByTagName('head')[0].appendChild(link);
+    }
+    link.href = url;
+
+    // Update apple touch icon
+    let appleLink: HTMLLinkElement | null = document.querySelector("link[rel='apple-touch-icon']");
+    if (!appleLink) {
+      appleLink = document.createElement('link');
+      appleLink.rel = 'apple-touch-icon';
+      document.getElementsByTagName('head')[0].appendChild(appleLink);
+    }
+    appleLink.href = url;
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 500 * 1024) {
+      alert("Ukuran file terlalu besar. Maksimal 500KB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64Logo = reader.result as string;
+      setLogoUrl(base64Logo);
+      updateAppIcons(base64Logo);
+      try {
+        await setDoc(doc(db, 'config', 'global'), {
+          logoUrl: base64Logo
+        }, { merge: true });
+      } catch (error) {
+        console.error("Error saving logo:", error);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleStartExam = (scannedUrl?: string) => {
     const finalUrl = scannedUrl || examUrl;
     if (!finalUrl) {
@@ -821,14 +867,20 @@ export default function Exambro() {
   };
 
   useEffect(() => {
-    if (!isAuthReady || !auth.currentUser) return;
+    if (!isAuthReady) return;
 
     const fetchConfig = async () => {
       try {
         const configRef = doc(db, 'config', 'global');
         const configSnap = await getDoc(configRef);
         if (configSnap.exists()) {
-          setGoogleFormEntryId(configSnap.data().googleFormEntryId || '');
+          const data = configSnap.data();
+          setGoogleFormEntryId(data.googleFormEntryId || '');
+          const savedLogo = data.logoUrl || '';
+          setLogoUrl(savedLogo);
+          if (savedLogo) {
+            updateAppIcons(savedLogo);
+          }
         }
       } catch (error) {
         console.error("Error fetching config:", error);
@@ -1022,8 +1074,12 @@ export default function Exambro() {
           <div className="max-w-6xl mx-auto space-y-6 px-2 md:px-0">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div className="flex items-center space-x-4">
-                <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-600 rounded-xl flex items-center justify-center font-black shadow-lg shrink-0">
-                  SUP
+                <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-600 rounded-xl flex items-center justify-center font-black shadow-lg shadow-blue-500/20 shrink-0 overflow-hidden">
+                  {logoUrl ? (
+                    <img src={logoUrl} alt="Logo" className="w-full h-full object-contain bg-white p-0.5" />
+                  ) : (
+                    "SUP"
+                  )}
                 </div>
                 <div>
                   <h1 className="text-xl md:text-2xl font-black">Dashboard Pengawas</h1>
@@ -1032,6 +1088,21 @@ export default function Exambro() {
               </div>
               
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <input 
+                  type="file" 
+                  id="logo-upload" 
+                  className="hidden" 
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                />
+                <label 
+                  htmlFor="logo-upload"
+                  className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-[10px] md:text-xs font-black text-slate-300 hover:border-blue-500 hover:text-blue-500 cursor-pointer transition-all flex items-center justify-center space-x-2"
+                >
+                  <Upload className="w-4 h-4" />
+                  <span>GANTI LOGO</span>
+                </label>
+
                 <div className="flex bg-slate-800 p-1 rounded-xl overflow-x-auto no-scrollbar">
                   <button 
                     onClick={() => setSupervisorTab('monitoring')}
@@ -1407,8 +1478,15 @@ export default function Exambro() {
           }}
         >
           <div className="flex items-center space-x-2 md:space-x-3">
-            <div className="w-8 h-8 md:w-10 md:h-10 bg-blue-600 rounded-lg md:rounded-xl flex items-center justify-center font-black shadow-lg shadow-blue-500/20 text-xs md:text-base shrink-0">
-              CBT
+            <div className={cn(
+              "w-8 h-8 md:w-10 md:h-10 bg-blue-600 rounded-lg md:rounded-xl flex items-center justify-center font-black shadow-lg shadow-blue-500/20 text-xs md:text-base shrink-0 overflow-hidden",
+              logoUrl && "bg-white p-0.5"
+            )}>
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+              ) : (
+                "CBT"
+              )}
             </div>
             <div className="hidden xs:block">
               <h1 className="font-bold text-[10px] md:text-sm leading-tight">Exambro CBT</h1>
@@ -1756,8 +1834,15 @@ export default function Exambro() {
           >
             <Share2 className="w-4 h-4 md:w-5 md:h-5" />
           </button>
-          <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 bg-blue-600 rounded-2xl md:rounded-3xl mb-4 md:mb-6 shadow-xl shadow-blue-200">
-            <ShieldAlert className="w-10 h-10 md:w-12 md:h-12 text-white" />
+          <div className={cn(
+            "inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 bg-blue-600 rounded-2xl md:rounded-3xl mb-4 md:mb-6 shadow-xl shadow-blue-200 overflow-hidden",
+            logoUrl && "bg-white p-1"
+          )}>
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+            ) : (
+              <ShieldAlert className="w-10 h-10 md:w-12 md:h-12 text-white" />
+            )}
           </div>
           <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Exambro CBT</h1>
           <div className="flex items-center justify-center space-x-2 mt-1">
@@ -1914,15 +1999,6 @@ export default function Exambro() {
                       >
                         Ganti Identitas
                       </button>
-                    </div>
-
-                    <div className="relative">
-                      <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t border-slate-200"></span>
-                      </div>
-                      <div className="relative flex justify-center text-[10px] uppercase">
-                        <span className="bg-white px-4 text-slate-400 font-black tracking-widest">ATAU UPLOAD</span>
-                      </div>
                     </div>
 
                     <label className={cn(
@@ -2154,6 +2230,18 @@ export default function Exambro() {
               <p className="text-[10px] text-slate-400 font-bold italic">
                 Aplikasi ini sekarang aman untuk ditutup.
               </p>
+              <button 
+                onClick={() => {
+                  window.close();
+                  // Fallback for mobile/browsers that don't allow window.close()
+                  setTimeout(() => {
+                    window.location.href = "about:blank";
+                  }, 100);
+                }}
+                className="w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg shadow-red-200 active:scale-95 mt-4"
+              >
+                TUTUP APLIKASI
+              </button>
             </div>
           </motion.div>
           <button 
