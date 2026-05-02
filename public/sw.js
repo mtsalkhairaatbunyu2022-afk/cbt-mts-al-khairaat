@@ -1,8 +1,7 @@
-const CACHE_NAME = 'exambro-v1';
+const CACHE_NAME = 'exambro-v2';
 const ASSETS_TO_CACHE = [
   '/',
-  '/index.html',
-  '/manifest.json'
+  '/index.html'
 ];
 
 self.addEventListener('install', (event) => {

@@ -726,15 +726,18 @@ export default function Exambro() {
 
   const updateAppIcons = (url: string) => {
     // Update or create favicon
-    let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
-    if (!link) {
-      link = document.createElement('link');
-      link.rel = 'icon';
-      document.getElementsByTagName('head')[0].appendChild(link);
-    }
-    link.href = url;
+    const iconRels = ['icon', 'shortcut icon'];
+    iconRels.forEach(rel => {
+      let link: HTMLLinkElement | null = document.querySelector(`link[rel~='${rel}']`);
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = rel;
+        document.getElementsByTagName('head')[0].appendChild(link);
+      }
+      link.href = url;
+    });
 
-    // Update apple touch icon
+    // Update apple touch icon (for iOS)
     let appleLink: HTMLLinkElement | null = document.querySelector("link[rel='apple-touch-icon']");
     if (!appleLink) {
       appleLink = document.createElement('link');
@@ -742,6 +745,48 @@ export default function Exambro() {
       document.getElementsByTagName('head')[0].appendChild(appleLink);
     }
     appleLink.href = url;
+
+    // Dynamically update Manifest for PWA installation icon
+    try {
+      const manifest = {
+        name: "Exambro MTs Al-Khairaat",
+        short_name: "Exambro",
+        description: "Aplikasi Ujian Aman MTs Al-Khairaat Bunyu",
+        start_url: window.location.origin + "/",
+        display: "standalone",
+        background_color: "#0f172a",
+        theme_color: "#2563eb",
+        icons: [
+          {
+            src: url,
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "any"
+          },
+          {
+            src: url,
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "any"
+          }
+        ]
+      };
+
+      const stringManifest = JSON.stringify(manifest);
+      const blob = new Blob([stringManifest], {type: 'application/json'});
+      const manifestURL = URL.createObjectURL(blob);
+      
+      // Remove any existing manifest links to force refresh
+      const existingManifests = document.querySelectorAll('link[rel="manifest"]');
+      existingManifests.forEach(el => el.remove());
+
+      const link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = manifestURL;
+      document.getElementsByTagName('head')[0].appendChild(link);
+    } catch (e) {
+      console.error("Error updating manifest:", e);
+    }
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1015,8 +1060,15 @@ export default function Exambro() {
         {!isSupervisorAuthenticated ? (
           <div className="max-w-md mx-auto mt-10 md:mt-20 space-y-8 px-4">
             <div className="text-center">
-              <div className="w-20 h-20 bg-blue-600 rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-xl shadow-blue-500/20">
-                <Settings className="w-10 h-10 text-white" />
+              <div className={cn(
+                "w-20 h-20 bg-blue-600 rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-xl shadow-blue-500/20 overflow-hidden",
+                logoUrl && "bg-white p-1"
+              )}>
+                {logoUrl ? (
+                  <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                ) : (
+                  <Settings className="w-10 h-10 text-white" />
+                )}
               </div>
               <h1 className="text-3xl font-black">Supervisor Login</h1>
               <p className="text-slate-400 mt-2">Masukkan password untuk akses dashboard</p>
@@ -1971,8 +2023,15 @@ export default function Exambro() {
                   <div className="space-y-6">
                     <div className="bg-blue-50 p-6 rounded-3xl border-2 border-blue-100 text-center space-y-6">
                       <div className="space-y-2">
-                        <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto shadow-xl shadow-blue-200 mb-4">
-                          <QrCode className="w-10 h-10 text-white" />
+                        <div className={cn(
+                          "w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto shadow-xl shadow-blue-200 mb-4 overflow-hidden",
+                          logoUrl && "bg-white p-1"
+                        )}>
+                          {logoUrl ? (
+                            <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                          ) : (
+                            <QrCode className="w-10 h-10 text-white" />
+                          )}
                         </div>
                         <h3 className="text-2xl font-black text-blue-900 uppercase leading-tight">
                           Identitas Tersimpan!
@@ -2053,8 +2112,15 @@ export default function Exambro() {
                   <div className="space-y-6">
                     <div className="bg-blue-50 p-4 md:p-6 rounded-2xl md:rounded-3xl border-2 border-blue-100 text-center space-y-4 md:space-y-6">
                       <div className="space-y-2">
-                        <div className="w-16 h-16 md:w-20 md:h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto shadow-xl shadow-blue-200 mb-4">
-                          <Play className="w-8 h-8 md:w-10 md:h-10 text-white fill-current" />
+                        <div className={cn(
+                          "w-16 h-16 md:w-20 md:h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto shadow-xl shadow-blue-200 mb-4 overflow-hidden",
+                          logoUrl && "bg-white p-1"
+                        )}>
+                          {logoUrl ? (
+                            <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                          ) : (
+                            <Play className="w-8 h-8 md:w-10 md:h-10 text-white fill-current" />
+                          )}
                         </div>
                         <h3 className="text-xl md:text-2xl font-black text-blue-900 uppercase leading-tight">
                           Siap Ujian!
@@ -2215,8 +2281,15 @@ export default function Exambro() {
             transition={{ delay: 0.2 }}
             className="bg-white rounded-[2.5rem] p-10 max-w-sm w-full shadow-2xl"
           >
-            <div className="w-20 h-20 bg-emerald-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
-              <Check className="w-10 h-10 text-emerald-600" />
+            <div className={cn(
+              "w-20 h-20 bg-emerald-100 rounded-3xl flex items-center justify-center mx-auto mb-6 overflow-hidden",
+              logoUrl && "bg-white p-1 border-2 border-emerald-50"
+            )}>
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+              ) : (
+                <Check className="w-10 h-10 text-emerald-600" />
+              )}
             </div>
             <h2 className="text-2xl font-black text-slate-900 mb-2 uppercase tracking-tight">Sesi Berakhir</h2>
             <p className="text-slate-500 font-bold text-sm mb-8">
